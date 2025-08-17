@@ -16,3 +16,7 @@ coverage/
 .vscode/
 .idea/
 src/retrieval/store.json
+datasets/
+data/docs/
+data/tables/
+src/eval/*.json
