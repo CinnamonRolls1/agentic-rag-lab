@@ -4,6 +4,7 @@ import { loadStore, searchHybrid, rerankCrossEncoder } from "./retrieval/index.j
 import type { Retrieved } from "./retrieval/index.ts";
 
 import { code_eval } from "./tools/code.js";
+import { duckdb_sql, initDuckDB } from "./tools/sql.js";
 
 export type Trace = {
     plan: string;
@@ -26,6 +27,7 @@ function ctxToString(reranked: Retrieved[], k = 6) {
 export async function runAgent(question: string) {
     const t0 = performance.now();
     await loadStore();
+    await initDuckDB();
 
     const plan = await classifyPlan(question);
 
@@ -55,11 +57,25 @@ export async function runAgent(question: string) {
                             }, required: ["expr"]
                         }
                     }
+                },
+                {
+                    type: "function",
+                    function: {
+                        name: "duckdb_sql",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                sql: {
+                                    type: "string",
+                                }
+                            }, required: ["sql"]
+                        }
+                    }
                 }
             ],
             messages: [
-                { role: "system", content: "You may call tools like code_eval as needed. If unnecessary, just answer." },
-                { role: "user", content: `QUESTION: ${question}\nCONTEXT:\n${contextStr}\nIf the question requires simple math execution, call code_eval.` }
+                { role: "system", content: "You may call tools like code_eval and duckdb_sql as needed. If unnecessary, just answer." },
+                { role: "user", content: `QUESTION: ${question}\nCONTEXT:\n${contextStr}\nIf the question requires simple math, call code_eval. If it requires executing SQL over the available CSV-backed tables, call duckdb_sql.` }
               ]
         });
 
@@ -69,6 +85,8 @@ export async function runAgent(question: string) {
             let result = "";
             if (call.function.name === "code_eval") {
                 result = code_eval(JSON.parse(call.function.arguments || "{}"));
+            } else if (call.function.name === "duckdb_sql") {
+                result = await duckdb_sql(JSON.parse(call.function.arguments || "{}"));
             }
             const tE = performance.now();
             toolsTrace.push({
