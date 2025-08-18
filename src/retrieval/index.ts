@@ -7,7 +7,7 @@ type Store = { chunks: Chunk[]; embeddings: number[][]; bm25: any };
 let STORE: Store;
 let BM: any;
 
-export async function loadStore(path: string) {
+export async function loadStore(path = "src/retrieval/store.json") {
     const raw = JSON.parse(await fs.readFile(path, "utf8"));
     STORE = raw;
 
@@ -56,7 +56,7 @@ export async function searchHybrid(
     }
     const bmVals = combined.map((x) => x.bm25);
     const annVals = combined.map((x) => x.ann);
-    
+
     const norm = (v: number, a: number[], eps = 1e-9) =>
         (v - Math.min(...a)) / (Math.max(...a) - Math.min(...a) + eps);
 
@@ -70,7 +70,8 @@ export async function rerankCrossEncoder(
     query: string,
     cands: Retrieved[],
     k = 50
-) {
+): Promise<Retrieved[]> {
+
     return cands.slice(0, k);
 }
 
