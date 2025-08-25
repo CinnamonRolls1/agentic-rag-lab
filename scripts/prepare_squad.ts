@@ -58,17 +58,16 @@ async function run() {
 
         for (const p of a.paragraphs) {
             for (const qa of p.qas) {
-                if (used >= MAX_Q) break;
-                evalCases.push({
-                    q: qa.question,
-                    gold_doc_ids: [fname],
-                    unanswerable: !!qa.is_impossible,
-                });
-                used++;
+                if (used < MAX_Q) {
+                    evalCases.push({
+                        q: qa.question,
+                        gold_doc_ids: [fname],
+                        unanswerable: !!qa.is_impossible,
+                    });
+                    used++;
+                }
             }
-            if (used >= MAX_Q) break;
         }
-        if (used >= MAX_Q) break;
     }
 
     await fs.writeFile(OUT_EVAL, JSON.stringify(evalCases, null, 2));

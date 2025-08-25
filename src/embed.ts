@@ -1,32 +1,62 @@
+// @ts-ignore
 import OpenAI from "openai";
 import "dotenv/config";
 
-const embedClient = new OpenAI({
-    baseURL: process.env.OPENAI_BASE_URL_EMBED,
-    apiKey: "not-needed"
-});
+function getEmbedClient() {
+    return new OpenAI({
+        baseURL: process.env.LM_BASE_URL,
+        apiKey: process.env.LM_API_KEY
+    });
+}
 
-const EMBED_MODEL = process.env.EMBED_MODEL!;
+function getEmbedModel() {
+    return process.env.EMBED_MODEL as string;
+}
+
+function normalizeVector(vec: number[]): number[] {
+    let norm = 0;
+    for (let i = 0; i < vec.length; i++) {
+        norm += vec[i] * vec[i];
+    }
+    norm = Math.sqrt(norm);
+    if (norm === 0) return vec;
+
+    const normalized = new Array(vec.length);
+    for (let i = 0; i < vec.length; i++) {
+        normalized[i] = vec[i] / norm;
+    }
+    return normalized;
+}
 
 export async function embedBatch(texts: string[], batchSize = 64): Promise<number[][]> {
     const out: number[][] = [];
+    const client = getEmbedClient();
+    const model = getEmbedModel();
+
     for (let i = 0; i < texts.length; i += batchSize) {
         const chunk = texts.slice(i, i + batchSize);
-        const r = await embedClient.embeddings.create({
-            model: EMBED_MODEL,
+        const r = await client.embeddings.create({
+            model: model,
             input: chunk,
         });
-        for (const item of r.data) out.push(item.embedding as unknown as number[]);
+        for (const item of r.data) {
+            const embedding = item.embedding as unknown as number[];
+            out.push(normalizeVector(embedding));
+        }
     }
     return out;
 }
 
 export async function embedOne(text: string): Promise<number[]> {
-    const r = await embedClient.embeddings.create({
-        model: EMBED_MODEL,
+    const client = getEmbedClient();
+    const model = getEmbedModel();
+
+    const r = await client.embeddings.create({
+        model: model,
         input: text,
     });
-    return r.data[0].embedding as unknown as number[];
+    const embedding = r.data[0].embedding as unknown as number[];
+    return normalizeVector(embedding); 
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {

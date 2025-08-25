@@ -17,6 +17,14 @@ coverage/
 .idea/
 src/retrieval/store.json
 datasets/
+data/
+!data/retrieval/.gitkeep
+!data/docs/.gitkeep
+!data/tables/.gitkeep
+data/retrieval/
 data/docs/
 data/tables/
+data/tools/
 src/eval/*.json
+models/
+

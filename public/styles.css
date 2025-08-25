@@ -1,0 +1,36 @@
+:root { --bg: #0b0f14; --panel: #121721; --text: #e6edf3; --muted: #98a1aa; --accent: #3b82f6; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+.app { max-width: 900px; margin: 0 auto; padding: 24px; }
+header { margin-bottom: 12px; }
+h1 { margin: 0 0 6px; font-size: 18px; letter-spacing: 0.5px; }
+.hint { color: var(--muted); font-size: 12px; }
+.input-row { display: flex; gap: 8px; margin: 16px 0; }
+input#q { flex: 1; padding: 10px 12px; background: var(--panel); border: 1px solid #1e2633; color: var(--text); border-radius: 6px; }
+button#ask { padding: 10px 14px; border-radius: 6px; background: var(--accent); color: white; border: 0; cursor: pointer; }
+.out { background: var(--panel); border: 1px solid #1e2633; border-radius: 8px; padding: 12px; display: grid; gap: 12px; }
+.block { padding: 10px 12px; border-radius: 6px; background: #0f1522; border: 1px solid #1b2332; }
+.mono { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; white-space: pre-wrap; }
+.kvs { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; }
+.kv { color: var(--muted); }
+.citations { color: var(--muted); font-size: 12px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #2a3345; padding: 6px 8px; text-align: left; }
+
+
+/* Markdown rendering */
+.markdown { line-height: 1.6; }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 { margin: 12px 0 6px; }
+.markdown p { margin: 8px 0; }
+.markdown code { background: #0c1220; padding: 2px 4px; border-radius: 4px; font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; }
+.markdown pre { background: #0c1220; padding: 10px 12px; border-radius: 6px; overflow: auto; border: 1px solid #1b2332; }
+.markdown pre code { background: transparent; padding: 0; }
+.markdown ul, .markdown ol { padding-left: 20px; margin: 8px 0; }
+.markdown blockquote { border-left: 3px solid #2a3345; margin: 8px 0; padding: 6px 12px; color: var(--muted); }
+.markdown a { color: #93c5fd; text-decoration: none; }
+.markdown a:hover { text-decoration: underline; }
+.markdown table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+.markdown th, .markdown td { border: 1px solid #2a3345; padding: 6px 8px; text-align: left; }
+.markdown hr { border: none; border-top: 1px solid #1e2633; margin: 12px 0; }
+
+

@@ -4,31 +4,39 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "nodemon --watch src --exec node --loader ts-node/esm src/index.ts",
+    "dev": "nodemon --watch src --exec tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "index": "node --loader ts-node/esm src/retrieval/build_index.ts",
-    "eval": "node --loader ts-node/esm src/eval/run.ts",
+    "index": "tsx src/retrieval/build_index.ts && tsx src/tools/build_table_index.ts",
+    "eval": "tsx src/eval/run.ts",
+    "web": "tsx src/server.ts",
+    "chat": "tsx src/chat.ts",
     "prep:mkdirs": "mkdir -p datasets data/docs data/tables src/eval",
-    "prep:squad": "node --loader ts-node/esm scripts/prepare_squad.ts",
-    "prep:hotpot": "node --loader ts-node/esm scripts/prepare_hotpot.ts",
-    "prep:wikisql": "node --loader ts-node/esm scripts/prepare_wikisql.ts",
-    "prep:merge": "node --loader ts-node/esm scripts/merge_eval.ts",
+    "prep:squad": "tsx scripts/prepare_squad.ts",
+    "prep:hotpot": "tsx scripts/prepare_hotpot.ts",
+    "prep:wikisql": "tsx scripts/prepare_wikisql.ts",
+    "prep:merge": "tsx scripts/merge_eval.ts",
     "prep:all": "npm run prep:mkdirs && npm run prep:squad && npm run prep:hotpot && npm run prep:wikisql && npm run prep:merge"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
     "duckdb": "^1.0.0",
+    "faiss-node": "^0.5.1",
     "mathjs": "^13.0.0",
+    "natural": "^8.1.0",
+    "onnxruntime-node": "^1.22.0-rev",
     "openai": "^4.55.0",
     "pdf-parse": "^1.1.1",
+    "stopwords": "^0.0.9",
     "tar": "^7.4.3",
     "wink-bm25-text-search": "^3.1.2"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
+    "dependency-cruiser": "^17.0.1",
+    "graphviz": "^0.0.9",
     "nodemon": "^3.1.0",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.4.5"
   }
 }

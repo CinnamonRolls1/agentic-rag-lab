@@ -1,19 +1,30 @@
+// @ts-ignore
 import OpenAI from "openai";
 import "dotenv/config";
 
 export const openai = new OpenAI({
-    baseURL: process.env.OPENAI_BASE_URL,
-    apiKey: "not-needed"});
+    baseURL: process.env.LM_BASE_URL,
+    apiKey: process.env.LM_API_KEY
+});
 
-export const MODEL = process.env.LMMODEL!;
+export const MODEL = process.env.LM_MODEL as string;
 
 export async function classifyPlan(question: string) {
-    const sys = `You are a planner. Output exactly one label:
-    - single
-    - multi
-    - needs_calc
-    - not_answerable
-    If multiple apply, choose the most specific one. Only output the label.`;
+    const sys = `You are a planner. Choose the most specific label and output ONLY that label:
+    - single: answerable with retrieval + single-step synthesis
+    - multi: requires multi-hop reasoning over multiple citations
+    - needs_calc: requires arithmetic or evaluation of an expression
+    - needs_sql: requires executing SQL over available CSV-backed tables
+    - not_answerable: insufficient context or cannot be answered
+    
+    Guidelines:
+    - If the user asks for counts, aggregations, filters, or analysis of "players", "data", "tables", or structured information, pick needs_sql
+    - If the question mentions "how many", "count", "number of", "average", "height", "total", "sum" combined with entities like players/teams/countries, pick needs_sql
+    - Questions asking for statistics about basketball players or sports data should be needs_sql
+    - If the user writes a SQL query directly, pick needs_sql  
+    - Pick multi if the question asks to "compare", "analyze differences", "explain similarities", "which approach", or synthesize across multiple topics/theories
+    - Pick not_answerable for real-time info (weather, stock prices, "tomorrow", "latest") or clearly outside scope
+    - Questions about specific people, events, or facts from documents should be single or multi`;
 
     const r = await openai.chat.completions.create({
         model: MODEL,
@@ -24,10 +35,27 @@ export async function classifyPlan(question: string) {
         temperature: 0
     });
 
-    const label =r.choices[0]?.message?.content?.trim().toLowerCase() as "single" | "multi" | "needs_calc" | "not_answerable";
-    if (label === "single") {
-        return "single";
+    const label = r.choices[0]?.message?.content?.trim().toLowerCase();
+    if (label === "single" || label === "multi" || label === "needs_calc" || label === "needs_sql" || label === "not_answerable") {
+        return label as any;
     }
+}
+
+export async function decomposeQuestion(question: string): Promise<string[]> {
+    const sys = `Break the user question into 2-4 concise, non-overlapping sub-questions that, taken together, are sufficient to answer the original question. Return ONLY a JSON array of strings.`;
+    const r = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+            { role: "system", content: sys },
+            { role: "user", content: question }
+        ],
+        temperature: 0
+    });
+    try {
+        const arr = JSON.parse(r.choices[0]!.message!.content!);
+        if (Array.isArray(arr) && arr.length > 0) return arr.map((s) => String(s)).slice(0, 4);
+    } catch {}
+    return [question];
 }
 
 export async function extractClaims(draft: string): Promise<string[]> {
@@ -113,10 +141,10 @@ export async function streamWithTTFT(
             if (first < 0) first = performance.now();
         }
     }
-    const end = performance.now()
+    const end = performance.now();
     return {
         text,
-        ttft_ms: first > 0 ? end - first : -1,
+        ttft_ms: first > 0 ? first - start : -1,
         toks_per_s: tokens > 0 ? tokens / ((end - first) / 1000) : 0
     };
 }

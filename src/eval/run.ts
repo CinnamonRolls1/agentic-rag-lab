@@ -1,8 +1,18 @@
 import fs from "fs/promises";
 import { runAgent } from "../pipeline.js";
 
-type Case = { q: string; gold_doc_ids: string[] };
-const cases: Case[] = JSON.parse(await fs.readFile("src/eval/eval.json", "utf8"));
+type DocCase = { q: string; gold_doc_ids: string[] };
+const allCases: any[] = JSON.parse(await fs.readFile("src/eval/eval.json", "utf8"));
+
+// Filter to grounded cases only (skip table only/SQL)
+let cases: DocCase[] = allCases.filter((c) => Array.isArray(c?.gold_doc_ids) && typeof c?.q === "string");
+
+// Optional limiting for quicker runs: EVAL_LIMIT env or --limit=NUM CLI arg (full run takes a 1 hr ++ @ ~30s per run on M4 pro)
+const argLimit = process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1];
+const limit = Number(process.env.EVAL_LIMIT || argLimit || 0);
+if (Number.isFinite(limit) && limit > 0) {
+    cases = cases.slice(0, limit);
+}
 
 let correct = 0, total = 0;
 const latencies: number[] = [];

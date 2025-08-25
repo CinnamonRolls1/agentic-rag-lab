@@ -1,16 +1,15 @@
 import fs from "fs/promises";
 import path from "path";
 import https from "https";
-import { createGunzip } from "zlib";
-import { createWriteStream, createReadStream } from "fs";
-import { pipeline as nodePipeline } from "stream";
+import { createWriteStream } from "fs";
 import { promisify } from "util";
-import * as tar from "tar";
-
-const pipeline = promisify(nodePipeline as any);
+import { execFile } from "child_process";
+import { URL as NodeURL } from "node:url";
 
 const ARCH = "datasets/wikisql-data.tar.bz2";
-const URL = "https://github.com/salesforce/WikiSQL/raw/master/data.tar.bz2";
+const URL_ARCH = "https://raw.githubusercontent.com/salesforce/WikiSQL/master/data.tar.bz2";
+const URL_DEV_JSONL = "https://raw.githubusercontent.com/salesforce/WikiSQL/master/data/dev.jsonl";
+const URL_TABLES_JSONL = "https://raw.githubusercontent.com/salesforce/WikiSQL/master/data/dev.tables.jsonl";
 const ROOT = "datasets/data";
 const DEV = `${ROOT}/dev.jsonl`;
 const TABLES = `${ROOT}/dev.tables.jsonl`;
@@ -28,31 +27,47 @@ const slug = (s: string) =>
         .replace(/^_|_$/g, "");
 
 async function fetchIfMissing(url: string, toPath: string) {
+    let exists = false;
     try {
-        await fs.access(toPath);
-        return;
-    } catch {
-        await fs.mkdir(path.dirname(toPath), { recursive: true });
-        await new Promise<void>((resolve, reject) => {
-            const file = createWriteStream(toPath);
+        const st = await fs.stat(toPath);
+        if (st.size > 1024) return;
+        exists = true;
+    } catch {}
+    await fs.mkdir(path.dirname(toPath), { recursive: true });
+    if (exists) {
+        try { await fs.unlink(toPath); } catch {}
+    }
+    await new Promise<void>((resolve, reject) => {
+        const file = createWriteStream(toPath);
+        const get = (u: string, tries = 5) => {
             https
-                .get(url, (res) => {
-                    if (res.statusCode && res.statusCode >= 400) {
-                        reject(new Error(`HTTP ${res.statusCode}`));
+                .get(u, (res) => {
+                    const code = res.statusCode || 0;
+                    const loc = res.headers.location || "";
+                    if (code >= 300 && code < 400 && loc && tries > 0) {
+                        res.resume();
+                        const next = loc.startsWith("http") ? loc : new NodeURL(loc, u).toString();
+                        get(next, tries - 1);
+                        return;
+                    }
+                    if (code >= 400) {
+                        reject(new Error(`HTTP ${code}`));
                         return;
                     }
                     res.pipe(file);
                     file.on("finish", () => file.close(() => resolve()));
                 })
                 .on("error", reject);
-        });
-    }
+        };
+        get(url);
+    });
 }
 
 async function extractTarBz2(archivePath: string, outDir: string) {
     await fs.mkdir(outDir, { recursive: true });
-    // tar module can handle .bz2 transparently with strip option
-    await tar.x({ file: archivePath, cwd: "datasets" }); // extracts into datasets/data/*
+    const execFileAsync = promisify(execFile);
+    // sstem tar for bzip2 archives
+    await execFileAsync("tar", ["-xjf", archivePath, "-C", outDir]);
 }
 
 const readJSONL = async (p: string) =>
@@ -65,12 +80,23 @@ const MAX_EX = 60;
 
 async function run() {
     await fs.mkdir(OUT_TABLES, { recursive: true });
-    await fetchIfMissing(URL, ARCH);
-    // Extract if datasets/data not present
+    await fetchIfMissing(URL_ARCH, ARCH);
+    let hasDev = false;
     try {
         await fs.access(DEV);
-    } catch {
-        await extractTarBz2(ARCH, "datasets");
+        hasDev = true;
+    } catch {}
+    if (!hasDev) {
+        try {
+            await extractTarBz2(ARCH, "datasets");
+            await fs.access(DEV);
+            hasDev = true;
+        } catch {}
+    }
+    if (!hasDev) {
+        await fetchIfMissing(URL_DEV_JSONL, DEV);
+        await fetchIfMissing(URL_TABLES_JSONL, TABLES);
+        await fs.access(DEV); // will throw if still missing
     }
 
     const tables: Table[] = await readJSONL(TABLES);
